@@ -9,7 +9,11 @@ import {
 } from './definitions';
 import { formatCurrency } from './utils';
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+const sql = postgres(process.env.POSTGRES_URL!, { 
+  ssl: 'require',
+  connect_timeout: 10,  // 10 seconds timeout to allow database to wake up
+  idle_timeout: 20,     // Keep connection alive for 20 seconds
+});
 
 export async function fetchRevenue() {
   try {
@@ -160,6 +164,7 @@ export async function fetchInvoiceById(id: string) {
       amount: invoice.amount / 100,
     }));
 
+    console.log(invoice); // Invoice is an empty array []
     return invoice[0];
   } catch (error) {
     console.error('Database Error:', error);
