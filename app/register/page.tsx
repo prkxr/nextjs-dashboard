@@ -1,19 +1,8 @@
 import AcmeLogo from '@/app/ui/acme-logo';
-import LoginForm from '@/app/ui/login-form';
+import RegisterForm from '@/app/ui/register-form';
 import { Suspense } from 'react';
-import { createSupabaseServerClient } from '@/app/lib/supabase/server';
-import { redirect } from 'next/navigation';
  
-export default async function LoginPage() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect('/dashboard');
-  }
-
+export default function RegisterPage() {
   return (
     <main className="flex items-center justify-center md:h-screen">
       <div className="relative mx-auto flex w-full max-w-[400px] flex-col space-y-2.5 p-4 md:-mt-32">
@@ -23,9 +12,10 @@ export default async function LoginPage() {
           </div>
         </div>
         <Suspense>
-          <LoginForm />
+          <RegisterForm />
         </Suspense>
       </div>
     </main>
   );
 }
+

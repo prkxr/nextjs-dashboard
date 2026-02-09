@@ -132,19 +132,18 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import postgres from 'postgres';
-import { signIn } from '@/auth';
-import { AuthError } from 'next-auth';
-
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+import { createSupabaseServerClient } from './supabase/server';
 
 const FormSchema = z.object({
   id: z.string(),
   customerId: z.string({
     invalid_type_error: 'Please select a customer.',
   }),
-  amount: z.coerce.number().gt(0, { message: 'Please enter an amount greater than $0.' }),
-  status: z.enum(['pending', 'paid'],{
+  amount: z
+    .coerce
+    .number()
+    .gt(0, { message: 'Please enter an amount greater than $0.' }),
+  status: z.enum(['pending', 'paid'], {
     invalid_type_error: 'Please select an invoice status.',
   }),
   date: z.string(),
@@ -161,6 +160,25 @@ export type State = {
   };
   message?: string | null;
 };
+
+async function getOwnerIdOrThrow() {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error('Auth Error:', error.message);
+  }
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  return { supabase, ownerId: user.id };
+}
+
 export async function createInvoice(prevState: State, formData: FormData) {
   const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
@@ -171,21 +189,42 @@ export async function createInvoice(prevState: State, formData: FormData) {
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Create Invoice.',
+      message: 'Missing fields. Failed to create invoice.',
     };
   }
+
   const { customerId, amount, status } = validatedFields.data;
-  const amountInCents = amount * 100;
+  const amountInCents = Math.round(amount * 100);
   const date = new Date().toISOString().split('T')[0];
 
-  try {
-    await sql`
-      INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-    `;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to Create Invoice.');
+  const { supabase, ownerId } = await getOwnerIdOrThrow();
+
+  // Ensure the customer belongs to the current user
+  const { data: customer, error: customerError } = await supabase
+    .from('customers')
+    .select('id, owner_id')
+    .eq('id', customerId)
+    .maybeSingle();
+
+  if (customerError || !customer || customer.owner_id !== ownerId) {
+    return {
+      message: 'Invalid customer selected.',
+    };
+  }
+
+  const { error } = await supabase.from('invoices').insert({
+    owner_id: ownerId,
+    customer_id: customerId,
+    amount_cents: amountInCents,
+    status,
+    date,
+  });
+
+  if (error) {
+    console.error('Database Error:', error.message);
+    return {
+      message: 'Database error. Failed to create invoice.',
+    };
   }
 
   revalidatePath('/dashboard/invoices');
@@ -202,62 +241,79 @@ export async function updateInvoice(
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
- 
+
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Update Invoice.',
+      message: 'Missing fields. Failed to update invoice.',
     };
   }
- 
+
   const { customerId, amount, status } = validatedFields.data;
-  const amountInCents = amount * 100;
- 
-  try {
-    await sql`
-      UPDATE invoices
-      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-      WHERE id = ${id}
-    `;
-  } catch (error) {
-    return { message: 'Database Error: Failed to Update Invoice.' };
+  const amountInCents = Math.round(amount * 100);
+
+  const { supabase, ownerId } = await getOwnerIdOrThrow();
+
+  // Ensure the invoice exists and belongs to the user
+  const { data: invoice, error: invoiceError } = await supabase
+    .from('invoices')
+    .select('id, owner_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (invoiceError || !invoice || invoice.owner_id !== ownerId) {
+    return {
+      message: 'Invoice not found.',
+    };
   }
- 
+
+  // Ensure the customer also belongs to the user
+  const { data: customer, error: customerError } = await supabase
+    .from('customers')
+    .select('id, owner_id')
+    .eq('id', customerId)
+    .maybeSingle();
+
+  if (customerError || !customer || customer.owner_id !== ownerId) {
+    return {
+      message: 'Invalid customer selected.',
+    };
+  }
+
+  const { error } = await supabase
+    .from('invoices')
+    .update({
+      customer_id: customerId,
+      amount_cents: amountInCents,
+      status,
+    })
+    .eq('id', id)
+    .eq('owner_id', ownerId);
+
+  if (error) {
+    console.error('Database Error:', error.message);
+    return {
+      message: 'Database error. Failed to update invoice.',
+    };
+  }
+
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
 }
 
 export async function deleteInvoice(id: string) {
-  try {
-    await sql`DELETE FROM invoices WHERE id = ${id}`;
-    revalidatePath('/dashboard/invoices');
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to Delete Invoice.');
-  }
-}
+  const { supabase, ownerId } = await getOwnerIdOrThrow();
 
-export async function authenticate(
-  prevState: string | undefined,
-  formData: FormData,
-) {
-  try {
-    await signIn('credentials', formData);
-  } catch (error) {
-    if (error instanceof AuthError) {
-      switch (error.type) {
-        case 'CredentialsSignin':
-          return 'Invalid credentials.';
-        default:
-          return 'Something went wrong.';
-      }
-    }
-    throw error;
-  }
-}
+  const { error } = await supabase
+    .from('invoices')
+    .delete()
+    .eq('id', id)
+    .eq('owner_id', ownerId);
 
-// Add this new server action for signing out
-export async function handleSignOut() {
-  const { signOut } = await import('@/auth');
-  await signOut({ redirectTo: '/' });
+  if (error) {
+    console.error('Database Error:', error.message);
+    throw new Error('Failed to delete invoice.');
+  }
+
+  revalidatePath('/dashboard/invoices');
 }

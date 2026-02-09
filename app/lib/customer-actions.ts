@@ -1,0 +1,151 @@
+'use server';
+
+import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { createSupabaseServerClient } from './supabase/server';
+
+const CustomerFormSchema = z.object({
+  id: z.string(),
+  name: z
+    .string()
+    .min(1, { message: 'Please enter a customer name.' })
+    .max(255, { message: 'Name is too long.' }),
+  email: z
+    .string()
+    .email({ message: 'Please enter a valid email address.' })
+    .max(255, { message: 'Email is too long.' }),
+  imageUrl: z
+    .string()
+    .url({ message: 'Please enter a valid image URL.' })
+    .optional()
+    .or(z.literal('')),
+});
+
+const CreateCustomerSchema = CustomerFormSchema.omit({ id: true });
+const UpdateCustomerSchema = CustomerFormSchema.omit({ id: true });
+
+export type CustomerFormState = {
+  errors?: {
+    name?: string[];
+    email?: string[];
+    imageUrl?: string[];
+  };
+  message?: string | null;
+};
+
+async function getOwnerIdOrThrow() {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error('Auth Error:', error.message);
+  }
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  return { supabase, ownerId: user.id };
+}
+
+export async function createCustomer(
+  prevState: CustomerFormState,
+  formData: FormData,
+) {
+  const validatedFields = CreateCustomerSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    imageUrl: formData.get('imageUrl'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing or invalid fields. Failed to create customer.',
+    };
+  }
+
+  const { supabase, ownerId } = await getOwnerIdOrThrow();
+  const { name, email, imageUrl } = validatedFields.data;
+
+  const { error } = await supabase.from('customers').insert({
+    owner_id: ownerId,
+    name,
+    email,
+    image_url: imageUrl || null,
+  });
+
+  if (error) {
+    console.error('Database Error:', error.message);
+    return {
+      message: 'Database error. Failed to create customer.',
+    };
+  }
+
+  revalidatePath('/dashboard/customers');
+  redirect('/dashboard/customers');
+}
+
+export async function updateCustomer(
+  id: string,
+  prevState: CustomerFormState,
+  formData: FormData,
+) {
+  const validatedFields = UpdateCustomerSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    imageUrl: formData.get('imageUrl'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing or invalid fields. Failed to update customer.',
+    };
+  }
+
+  const { supabase, ownerId } = await getOwnerIdOrThrow();
+  const { name, email, imageUrl } = validatedFields.data;
+
+  const { error } = await supabase
+    .from('customers')
+    .update({
+      name,
+      email,
+      image_url: imageUrl || null,
+    })
+    .eq('id', id)
+    .eq('owner_id', ownerId);
+
+  if (error) {
+    console.error('Database Error:', error.message);
+    return {
+      message: 'Database error. Failed to update customer.',
+    };
+  }
+
+  revalidatePath('/dashboard/customers');
+  redirect('/dashboard/customers');
+}
+
+export async function deleteCustomer(id: string) {
+  const { supabase, ownerId } = await getOwnerIdOrThrow();
+
+  const { error } = await supabase
+    .from('customers')
+    .delete()
+    .eq('id', id)
+    .eq('owner_id', ownerId);
+
+  if (error) {
+    console.error('Database Error:', error.message);
+    throw new Error('Failed to delete customer.');
+  }
+
+  revalidatePath('/dashboard/customers');
+}
+

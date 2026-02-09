@@ -86,3 +86,13 @@ export type InvoiceForm = {
   amount: number;
   status: 'pending' | 'paid';
 };
+
+export type InvoiceComment = {
+  id: string;
+  invoice_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  author_name?: string | null;
+};
