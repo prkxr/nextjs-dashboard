@@ -28,7 +28,7 @@ export default function CreateCustomerForm() {
             name="name"
             type="text"
             className="block w-full rounded-md border border-gray-200 py-2 px-3 text-sm outline-2 placeholder:text-gray-500"
-            placeholder="Acme Inc."
+            placeholder="Northstar Labs"
             required
             aria-describedby="name-error"
           />

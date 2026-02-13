@@ -10,7 +10,7 @@ import { Metadata } from 'next';
  
 
 export const metadata: Metadata = {
-  title: 'Invoices | Acme Dashboard',
+  title: 'Invoices | Invoice Dashboard',
 };
 export default async function Page(props: {
   searchParams?: Promise<{
