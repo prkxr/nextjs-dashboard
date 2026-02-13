@@ -26,13 +26,21 @@ export default async function LatestInvoices(){
                 )}
               >
                 <div className="flex items-center">
-                  <Image
-                    src={invoice.image_url}
-                    alt={`${invoice.name}'s profile picture`}
-                    className="mr-4 rounded-full"
-                    width={32}
-                    height={32}
-                  />
+                  {invoice.image_url && invoice.image_url.trim() !== '' ? (
+                    <Image
+                      src={invoice.image_url}
+                      alt={`${invoice.name}'s profile picture`}
+                      className="mr-4 rounded-full"
+                      width={32}
+                      height={32}
+                    />
+                  ) : (
+                    <div className="mr-4 h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-500 text-sm font-medium">
+                        {invoice.name?.charAt(0)?.toUpperCase() || '?'}
+                      </span>
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold md:text-base">
                       {invoice.name}

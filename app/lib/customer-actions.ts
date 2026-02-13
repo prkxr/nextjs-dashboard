@@ -34,6 +34,34 @@ export type CustomerFormState = {
   message?: string | null;
 };
 
+async function ensureProfileForUser(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  user: { id: string; user_metadata?: { full_name?: string } | null },
+) {
+  const { data: existingProfile, error: profileLookupError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileLookupError) {
+    throw profileLookupError;
+  }
+
+  if (existingProfile) {
+    return;
+  }
+
+  const { error: profileInsertError } = await supabase.from('profiles').insert({
+    id: user.id,
+    full_name: user.user_metadata?.full_name ?? null,
+  });
+
+  if (profileInsertError) {
+    throw profileInsertError;
+  }
+}
+
 async function getOwnerIdOrThrow() {
   const supabase = createSupabaseServerClient();
   const {
@@ -48,6 +76,7 @@ async function getOwnerIdOrThrow() {
   if (!user) {
     throw new Error('Not authenticated');
   }
+  await ensureProfileForUser(supabase, user);
 
   return { supabase, ownerId: user.id };
 }
