@@ -59,6 +59,8 @@ export default function RegisterForm() {
       );
     }
 
+    router.refresh();
+
     // After successful sign-up, send the user to the dashboard.
     router.push('/dashboard');
   }

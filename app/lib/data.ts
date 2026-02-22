@@ -25,7 +25,7 @@ async function getCurrentUserId() {
 
 export async function fetchRevenue() {
   try {
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from('revenue')
       .select('*')
@@ -49,7 +49,7 @@ export async function fetchLatestInvoices() {
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from('invoices')
       .select(
@@ -98,8 +98,7 @@ export async function fetchCardData() {
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
-
+    const supabase = await createSupabaseServerClient();
     const [
       { count: invoiceCount, error: invoicesError },
       { count: customerCount, error: customersError },
@@ -164,7 +163,7 @@ export async function fetchFilteredInvoices(
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
+    const supabase = await createSupabaseServerClient();
     let queryBuilder = supabase
       .from('invoices')
       .select(
@@ -222,7 +221,7 @@ export async function fetchInvoicesPages(query: string) {
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
+    const supabase = await createSupabaseServerClient();
     let queryBuilder = supabase
       .from('invoices')
       .select('id', { count: 'exact', head: false })
@@ -255,7 +254,7 @@ export async function fetchInvoiceById(id: string) {
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
+    const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase
       .from('invoices')
@@ -293,7 +292,7 @@ export async function fetchCustomerById(id: string) {
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from('customers')
       .select('id, name, email')
@@ -319,7 +318,7 @@ export async function fetchCustomers() {
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ fixed
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from('customers')
       .select('id, name')
@@ -344,7 +343,7 @@ export async function fetchFilteredCustomers(query: string) {
       throw new Error('Not authenticated');
     }
 
-    const supabase = await createSupabaseServerClient(); // ✅ already correct
+    const supabase = await createSupabaseServerClient();
 
     let customerQuery = supabase
       .from('customers')
