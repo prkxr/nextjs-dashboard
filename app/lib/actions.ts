@@ -162,7 +162,7 @@ export type State = {
 };
 
 async function ensureProfileForUser(
-  supabase: ReturnType<typeof createSupabaseServerClient>,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   user: { id: string; user_metadata?: { full_name?: string } | null },
 ) {
   const { data: existingProfile, error: profileLookupError } = await supabase
@@ -190,7 +190,7 @@ async function ensureProfileForUser(
 }
 
 async function getOwnerIdOrThrow() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
     error,
