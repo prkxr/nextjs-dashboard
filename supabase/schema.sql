@@ -21,7 +21,6 @@ create table if not exists public.customers (
   owner_id uuid not null references public.profiles(id) on delete cascade,
   name text not null,
   email text not null,
-  image_url text,
   created_at timestamptz not null default now()
 );
 

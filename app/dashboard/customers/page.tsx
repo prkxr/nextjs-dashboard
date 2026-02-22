@@ -63,6 +63,7 @@ import { lusitana } from '@/app/ui/fonts';
 import CustomersTable from '@/app/ui/customers/table';
 import Search from '@/app/ui/search';
 import { CreateCustomer } from '@/app/ui/customers/buttons';
+import { fetchFilteredCustomers } from '@/app/lib/data';
 
 export const metadata: Metadata = {
   title: 'Customers | Invoice Dashboard',
@@ -71,12 +72,13 @@ export const metadata: Metadata = {
 export default async function Page(props: {
   searchParams?: Promise<{
     query?: string;
-    page?: string;
+    // page?: string;
   }>;
 }) {
   const searchParams = await props.searchParams;
   const query = searchParams?.query || '';
-  const currentPage = Number(searchParams?.page) || 1;
+  // const currentPage = Number(searchParams?.page) || 1;
+  const customers = await fetchFilteredCustomers(query);
 
   return (
     <div className="w-full">
@@ -88,7 +90,8 @@ export default async function Page(props: {
         <CreateCustomer />
       </div>
       <div className="mt-6">
-        <CustomersTable query={query} currentPage={currentPage} />
+        {/* <CustomersTable query={query} currentPage={currentPage} /> */}
+        <CustomersTable customers={customers} />
       </div>
     </div>
   );

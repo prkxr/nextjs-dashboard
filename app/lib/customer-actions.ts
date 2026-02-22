@@ -15,11 +15,6 @@ const CustomerFormSchema = z.object({
     .string()
     .email({ message: 'Please enter a valid email address.' })
     .max(255, { message: 'Email is too long.' }),
-  imageUrl: z
-    .string()
-    .url({ message: 'Please enter a valid image URL.' })
-    .optional()
-    .or(z.literal('')),
 });
 
 const CreateCustomerSchema = CustomerFormSchema.omit({ id: true });
@@ -29,13 +24,12 @@ export type CustomerFormState = {
   errors?: {
     name?: string[];
     email?: string[];
-    imageUrl?: string[];
   };
   message?: string | null;
 };
 
 async function ensureProfileForUser(
-  supabase: ReturnType<typeof createSupabaseServerClient>,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   user: { id: string; user_metadata?: { full_name?: string } | null },
 ) {
   const { data: existingProfile, error: profileLookupError } = await supabase
@@ -58,12 +52,12 @@ async function ensureProfileForUser(
   });
 
   if (profileInsertError) {
-    throw profileInsertError;
+    console.error('Failed to create profile:', profileInsertError.message);
   }
 }
 
 async function getOwnerIdOrThrow() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
     error,
@@ -88,7 +82,6 @@ export async function createCustomer(
   const validatedFields = CreateCustomerSchema.safeParse({
     name: formData.get('name'),
     email: formData.get('email'),
-    imageUrl: formData.get('imageUrl'),
   });
 
   if (!validatedFields.success) {
@@ -99,13 +92,12 @@ export async function createCustomer(
   }
 
   const { supabase, ownerId } = await getOwnerIdOrThrow();
-  const { name, email, imageUrl } = validatedFields.data;
+  const { name, email } = validatedFields.data;
 
   const { error } = await supabase.from('customers').insert({
     owner_id: ownerId,
     name,
     email,
-    image_url: imageUrl || null,
   });
 
   if (error) {
@@ -127,7 +119,6 @@ export async function updateCustomer(
   const validatedFields = UpdateCustomerSchema.safeParse({
     name: formData.get('name'),
     email: formData.get('email'),
-    imageUrl: formData.get('imageUrl'),
   });
 
   if (!validatedFields.success) {
@@ -138,14 +129,13 @@ export async function updateCustomer(
   }
 
   const { supabase, ownerId } = await getOwnerIdOrThrow();
-  const { name, email, imageUrl } = validatedFields.data;
+  const { name, email } = validatedFields.data;
 
   const { error } = await supabase
     .from('customers')
     .update({
       name,
       email,
-      image_url: imageUrl || null,
     })
     .eq('id', id)
     .eq('owner_id', ownerId);
@@ -177,4 +167,3 @@ export async function deleteCustomer(id: string) {
 
   revalidatePath('/dashboard/customers');
 }
-

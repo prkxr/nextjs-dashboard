@@ -68,30 +68,6 @@ export default function EditCustomerForm({ customer }: { customer: Customer }) {
           </div>
         </div>
 
-        <div className="mb-4">
-          <label
-            htmlFor="imageUrl"
-            className="mb-2 block text-sm font-medium"
-          >
-            Avatar image URL (optional)
-          </label>
-          <input
-            id="imageUrl"
-            name="imageUrl"
-            type="url"
-            defaultValue={customer.image_url}
-            className="block w-full rounded-md border border-gray-200 py-2 px-3 text-sm outline-2 placeholder:text-gray-500"
-            aria-describedby="imageUrl-error"
-          />
-          <div id="imageUrl-error" aria-live="polite" aria-atomic="true">
-            {state.errors?.imageUrl?.map((error) => (
-              <p key={error} className="mt-2 text-sm text-red-500">
-                {error}
-              </p>
-            ))}
-          </div>
-        </div>
-
         {state.message && (
           <p className="mt-2 text-sm text-red-500">{state.message}</p>
         )}
